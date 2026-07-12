@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Binaural Beat Video Maker</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b26; --panel2:#1c2333; --border:#2a3347;
+    --text:#dbe2f0; --dim:#8b96ad; --accent:#7c9fff; --accent2:#b78cff;
+    --delta:#5b8def; --theta:#8f6fe8; --alpha:#3fb98d; --beta:#e8a13f;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif; min-height:100vh;}
+  header{padding:18px 28px; border-bottom:1px solid var(--border); display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;}
+  header h1{font-size:1.25rem; font-weight:600; background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  header .sub{color:var(--dim); font-size:.8rem;}
+  .warn{margin:14px 28px 0; padding:10px 16px; border:1px solid #6b5620; background:#2a2410; color:#e8cf7a; border-radius:8px; font-size:.8rem; line-height:1.7;}
+  .layout{display:grid; grid-template-columns:400px 1fr; gap:20px; padding:20px 28px; align-items:start;}
+  @media(max-width:980px){ .layout{grid-template-columns:1fr;} }
+
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:16px;}
+  .card h2{font-size:.9rem; font-weight:600; color:var(--accent); margin-bottom:12px; letter-spacing:.05em;}
+  .row{display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;}
+  .row label{font-size:.8rem; color:var(--dim); min-width:110px;}
+  .row .val{font-size:.8rem; color:var(--text); min-width:70px; text-align:right; font-variant-numeric:tabular-nums;}
+  input[type=range]{flex:1; accent-color:var(--accent); min-width:120px;}
+  input[type=text], textarea, select, input[type=number]{
+    background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:6px 9px; font-size:.83rem; font-family:inherit;
+  }
+  textarea{width:100%; resize:vertical; min-height:64px; line-height:1.6;}
+  select{cursor:pointer;}
+  input[type=file]{font-size:.75rem; color:var(--dim); max-width:100%;}
+  input[type=checkbox]{accent-color:var(--accent);}
+
+  .presets{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px;}
+  .presets button{
+    padding:9px 4px; border-radius:8px; border:1px solid var(--border); background:var(--panel2);
+    color:var(--text); cursor:pointer; font-size:.75rem; line-height:1.5; transition:.15s;
+  }
+  .presets button small{display:block; color:var(--dim); font-size:.65rem;}
+  .presets button:hover{border-color:var(--accent);}
+  .presets button.active{border-width:2px;}
+  #pDelta.active{border-color:var(--delta); box-shadow:0 0 10px #5b8def44;}
+  #pTheta.active{border-color:var(--theta); box-shadow:0 0 10px #8f6fe844;}
+  #pAlpha.active{border-color:var(--alpha); box-shadow:0 0 10px #3fb98d44;}
+  #pBeta.active {border-color:var(--beta);  box-shadow:0 0 10px #e8a13f44;}
+
+  .band-chip{display:inline-block; padding:2px 10px; border-radius:99px; font-size:.72rem; font-weight:600;}
+
+  .preview-wrap{position:sticky; top:16px;}
+  canvas{width:100%; border-radius:12px; border:1px solid var(--border); background:#000; display:block;}
+  .controls{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; align-items:center;}
+  .btn{
+    padding:11px 22px; border-radius:9px; border:none; cursor:pointer;
+    font-size:.9rem; font-weight:600; font-family:inherit; transition:.15s;
+  }
+  .btn:disabled{opacity:.4; cursor:not-allowed;}
+  #btnPlay{background:linear-gradient(135deg,#3b6fd4,#7c9fff); color:#fff;}
+  #btnRec{background:linear-gradient(135deg,#c0392b,#e74c3c); color:#fff;}
+  #btnRec.recording{animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 #e74c3c88;}50%{box-shadow:0 0 0 10px #e74c3c00;}}
+  .status{font-size:.85rem; color:var(--dim); font-variant-numeric:tabular-nums;}
+  .status b{color:var(--text);}
+  progress{width:100%; height:8px; margin-top:10px; accent-color:#e74c3c; border-radius:4px;}
+  .hint{font-size:.72rem; color:var(--dim); line-height:1.7; margin-top:6px;}
+  .filelist{font-size:.75rem; color:var(--accent); margin-top:4px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎧 Binaural Beat Video Maker</h1>
+  <span class="sub">バイノーラルビート × サブリミナル音声 × サブリミナルフラッシュ 動画生成</span>
+</header>
+
+<div class="warn">
+  ⚠️ <b>ご利用上の注意</b>：
+  バイノーラルビートは<b>ステレオヘッドホン／イヤホン必須</b>です（左右の耳に異なる周波数を届けることで「うねり」を脳内で知覚します）。
+  光の点滅を含みます。<b>光過敏性発作の既往がある方はフラッシュ機能を使用しないでください</b>（本アプリはフラッシュ間隔を最短3秒に制限しています）。
+  てんかん・心臓疾患・妊娠中の方、機器の運転中は使用を控えてください。生成物はご自身のためにお使いください。
+</div>
+
+<div class="layout">
+  <div><!-- ===== 設定パネル ===== -->
+
+    <div class="card">
+      <h2>① バイノーラルビート（うねり周波数）</h2>
+      <div class="presets">
+        <button id="pDelta" onclick="setPreset(2,'pDelta')">δ デルタ<small>1–4Hz 深い睡眠</small></button>
+        <button id="pTheta" onclick="setPreset(6,'pTheta')">θ シータ<small>4–8Hz 瞑想</small></button>
+        <button id="pAlpha" onclick="setPreset(10,'pAlpha')" class="active">α アルファ<small>8–13Hz リラックス</small></button>
+        <button id="pBeta"  onclick="setPreset(18,'pBeta')">β ベータ<small>13–30Hz 集中</small></button>
+      </div>
+      <div class="row">
+        <label>うねり周波数</label>
+        <input type="range" id="beatFreq" min="1" max="30" step="0.5" value="10">
+        <span class="val" id="beatVal">10.0 Hz</span>
+      </div>
+      <div class="row">
+        <label>脳波帯域</label>
+        <span class="band-chip" id="bandChip">アルファ波</span>
+      </div>
+      <div class="row">
+        <label>基本周波数（搬送波）</label>
+        <input type="range" id="carrier" min="80" max="500" step="10" value="200">
+        <span class="val" id="carrierVal">200 Hz</span>
+      </div>
+      <div class="row">
+        <label>ビート音量</label>
+        <input type="range" id="beatVol" min="0" max="0.5" step="0.01" value="0.15">
+        <span class="val" id="beatVolVal">30%</span>
+      </div>
+      <div class="hint">左耳に基本周波数、右耳に「基本＋うねり」の周波数を再生します。例：200Hzと210Hz → 10Hzのうねり（アルファ波帯域）。</div>
+    </div>
+
+    <div class="card">
+      <h2>② サブリミナル音声（任意）</h2>
+      <div class="row">
+        <label>音声ファイル</label>
+        <input type="file" id="subAudio" accept="audio/*">
+      </div>
+      <div class="filelist" id="subAudioName"></div>
+      <div class="row">
+        <label>音量（微小）</label>
+        <input type="range" id="subVol" min="0" max="0.2" step="0.005" value="0.03">
+        <span class="val" id="subVolVal">3.0%</span>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="subCheck"> 確認用に大音量で再生（試聴のみ・録画時は自動OFF）</label>
+      </div>
+      <div class="hint">ご自身で録音したアファメーション音声などをアップロードすると、ほぼ聴こえない音量でループ再生・録画されます。</div>
+    </div>
+
+    <div class="card">
+      <h2>③ サブリミナルフラッシュ（任意）</h2>
+      <div class="row">
+        <label>フラッシュ画像</label>
+        <input type="file" id="flashImgs" accept="image/*" multiple>
+      </div>
+      <div class="filelist" id="flashImgNames"></div>
+      <div class="row" style="align-items:flex-start;">
+        <label style="padding-top:6px;">メッセージ文<br><small style="color:var(--dim)">（1行＝1メッセージ）</small></label>
+        <textarea id="flashTexts" placeholder="例：&#10;私は毎日成長している&#10;心は穏やかで満たされている"></textarea>
+      </div>
+      <div class="row">
+        <label>表示時間</label>
+        <select id="flashDur">
+          <option value="17">17ms（約1フレーム・知覚困難）</option>
+          <option value="33" selected>33ms（約2フレーム）</option>
+          <option value="50">50ms（約3フレーム）</option>
+          <option value="100">100ms（かすかに見える）</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>フラッシュ間隔</label>
+        <input type="range" id="flashInterval" min="3" max="30" step="1" value="8">
+        <span class="val" id="flashIntervalVal">8 秒</span>
+      </div>
+      <div class="row">
+        <label>不透明度</label>
+        <input type="range" id="flashOpacity" min="0.1" max="1" step="0.05" value="0.7">
+        <span class="val" id="flashOpacityVal">70%</span>
+      </div>
+      <div class="hint">画像とメッセージ文を順番にローテーション表示します。安全のため間隔は最短3秒・表示は最長100msに制限しています。</div>
+    </div>
+
+    <div class="card">
+      <h2>④ 映像・録画設定</h2>
+      <div class="row">
+        <label>背景テーマ</label>
+        <select id="theme">
+          <option value="cosmos" selected>宇宙（深青）</option>
+          <option value="forest">森（深緑）</option>
+          <option value="sunset">夕暮れ（暖色）</option>
+          <option value="mono">モノトーン</option>
+        </select>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="showOrb" checked> 呼吸オーブを表示（うねりと同期して微発光）</label>
+      </div>
+      <div class="row">
+        <label>録画時間</label>
+        <select id="duration">
+          <option value="1">1 分（テスト用）</option>
+          <option value="3">3 分</option>
+          <option value="5" selected>5 分</option>
+          <option value="10">10 分</option>
+          <option value="15">15 分</option>
+          <option value="30">30 分</option>
+          <option value="60">60 分</option>
+          <option value="0">手動停止まで</option>
+        </select>
+      </div>
+      <div class="hint">録画はリアルタイムで行われます（5分の動画＝5分間の録画）。完了すると WebM 動画が自動ダウンロードされます。WebM は YouTube にそのままアップロード可能です。</div>
+    </div>
+  </div>
+
+  <div class="preview-wrap"><!-- ===== プレビュー ===== -->
+    <canvas id="cv" width="1280" height="720"></canvas>
+    <div class="controls">
+      <button class="btn" id="btnPlay">▶ プレビュー開始</button>
+      <button class="btn" id="btnRec">● 録画開始</button>
+      <span class="status" id="status">停止中</span>
+    </div>
+    <progress id="recProgress" max="100" value="0" style="display:none;"></progress>
+    <div class="hint">🎧 ヘッドホンを装着してからプレビューで音と映像を確認 → 「録画開始」で動画を生成してください。録画中はこのタブを前面に表示したままにしてください（バックグラウンドでは描画が停止します）。</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ========= 状態 ========= */
+let audioCtx = null, oscL = null, oscR = null, beatGain = null, subGain = null, subSource = null, busGain = null, streamDest = null;
+let running = false, recording = false;
+let recorder = null, chunks = [];
+let subBuffer = null;
+let flashImages = [];   // HTMLImageElement[]
+let startTime = 0;      // performance.now at start
+let nextFlashAt = 0, flashUntil = 0, flashIndex = 0, currentFlash = null;
+let recStartTime = 0, recDurationMs = 0, recTimerId = null;
+
+const cv = document.getElementById('cv');
+const ctx2d = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+
+/* ========= 帯域判定 ========= */
+function bandOf(f){
+  if(f < 4)  return {name:'デルタ波（深い睡眠）', color:'#5b8def', key:'delta'};
+  if(f < 8)  return {name:'シータ波（瞑想）',     color:'#8f6fe8', key:'theta'};
+  if(f < 13) return {name:'アルファ波（リラックス）', color:'#3fb98d', key:'alpha'};
+  return       {name:'ベータ波（集中）',           color:'#e8a13f', key:'beta'};
+}
+function setPreset(freq, btnId){
+  $('beatFreq').value = freq;
+  document.querySelectorAll('.presets button').forEach(b=>b.classList.remove('active'));
+  $(btnId).classList.add('active');
+  updateUI();
+}
+function updateUI(){
+  const f = parseFloat($('beatFreq').value);
+  $('beatVal').textContent = f.toFixed(1) + ' Hz';
+  const b = bandOf(f);
+  const chip = $('bandChip');
+  chip.textContent = b.name;
+  chip.style.background = b.color + '33';
+  chip.style.color = b.color;
+  $('carrierVal').textContent = $('carrier').value + ' Hz';
+  $('beatVolVal').textContent = Math.round(parseFloat($('beatVol').value)/0.5*100) + '%';
+  $('subVolVal').textContent = (parseFloat($('subVol').value)*100).toFixed(1) + '%';
+  $('flashIntervalVal').textContent = $('flashInterval').value + ' 秒';
+  $('flashOpacityVal').textContent = Math.round(parseFloat($('flashOpacity').value)*100) + '%';
+  applyAudioParams();
+}
+['beatFreq','carrier','beatVol','subVol','flashInterval','flashOpacity'].forEach(id=>{
+  $(id).addEventListener('input', updateUI);
+});
+$('subCheck').addEventListener('change', applyAudioParams);
+
+/* ========= オーディオ ========= */
+function applyAudioParams(){
+  if(!audioCtx) return;
+  const f = parseFloat($('beatFreq').value);
+  const c = parseFloat($('carrier').value);
+  const t = audioCtx.currentTime;
+  if(oscL) oscL.frequency.setTargetAtTime(c, t, 0.05);
+  if(oscR) oscR.frequency.setTargetAtTime(c + f, t, 0.05);
+  if(beatGain) beatGain.gain.setTargetAtTime(parseFloat($('beatVol').value), t, 0.05);
+  if(subGain){
+    const check = $('subCheck').checked && !recording;
+    subGain.gain.setTargetAtTime(check ? 0.5 : parseFloat($('subVol').value), t, 0.05);
+  }
+}
+function startAudio(){
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  busGain = audioCtx.createGain();
+  busGain.gain.value = 1;
+  streamDest = audioCtx.createMediaStreamDestination();
+  busGain.connect(audioCtx.destination);
+  busGain.connect(streamDest);
+
+  // バイノーラル：左右で周波数差
+  const f = parseFloat($('beatFreq').value);
+  const c = parseFloat($('carrier').value);
+  beatGain = audioCtx.createGain();
+  beatGain.gain.value = parseFloat($('beatVol').value);
+
+  const panL = new StereoPannerNode(audioCtx, {pan:-1});
+  const panR = new StereoPannerNode(audioCtx, {pan: 1});
+  oscL = audioCtx.createOscillator(); oscL.type='sine'; oscL.frequency.value = c;
+  oscR = audioCtx.createOscillator(); oscR.type='sine'; oscR.frequency.value = c + f;
+  oscL.connect(panL).connect(beatGain);
+  oscR.connect(panR).connect(beatGain);
+  beatGain.connect(busGain);
+  oscL.start(); oscR.start();
+
+  // サブリミナル音声（ループ・微小音量）
+  if(subBuffer){
+    subSource = audioCtx.createBufferSource();
+    subSource.buffer = subBuffer;
+    subSource.loop = true;
+    subGain = audioCtx.createGain();
+    subGain.gain.value = parseFloat($('subVol').value);
+    subSource.connect(subGain).connect(busGain);
+    subSource.start();
+  }
+  applyAudioParams();
+}
+function stopAudio(){
+  try{ oscL && oscL.stop(); oscR && oscR.stop(); subSource && subSource.stop(); }catch(e){}
+  if(audioCtx){ audioCtx.close(); }
+  audioCtx = oscL = oscR = beatGain = subGain = subSource = busGain = streamDest = null;
+}
+
+/* ========= ファイル読み込み ========= */
+$('subAudio').addEventListener('change', async e=>{
+  const file = e.target.files[0];
+  if(!file){ subBuffer = null; $('subAudioName').textContent=''; return; }
+  const buf = await file.arrayBuffer();
+  const tmpCtx = new (window.AudioContext || window.webkitAudioContext)();
+  try{
+    subBuffer = await tmpCtx.decodeAudioData(buf);
+    $('subAudioName').textContent = '✓ ' + file.name + '（' + subBuffer.duration.toFixed(1) + '秒・ループ再生）';
+  }catch(err){
+    subBuffer = null;
+    $('subAudioName').textContent = '✗ この音声ファイルは読み込めませんでした';
+  }
+  tmpCtx.close();
+});
+$('flashImgs').addEventListener('change', e=>{
+  flashImages = [];
+  const files = [...e.target.files];
+  files.forEach(f=>{
+    const img = new Image();
+    img.onload = ()=>{ flashImages.push(img); $('flashImgNames').textContent = '✓ 画像 ' + flashImages.length + ' 枚 読み込み済み'; };
+    img.src = URL.createObjectURL(f);
+  });
+  if(files.length===0) $('flashImgNames').textContent='';
+});
+
+/* ========= フラッシュ項目 ========= */
+function getFlashItems(){
+  const items = [];
+  flashImages.forEach(img => items.push({type:'img', img}));
+  $('flashTexts').value.split('\n').map(s=>s.trim()).filter(Boolean)
+    .forEach(text => items.push({type:'text', text}));
+  return items;
+}
+
+/* ========= 描画 ========= */
+const THEMES = {
+  cosmos:{c1:'#0a0e2a', c2:'#1a1240', orb:'#7c9fff'},
+  forest:{c1:'#071a10', c2:'#0e2b1a', orb:'#3fb98d'},
+  sunset:{c1:'#20090e', c2:'#3a1520', orb:'#e8a13f'},
+  mono:  {c1:'#0a0a0a', c2:'#1a1a1a', orb:'#bbbbbb'},
+};
+function draw(now){
+  requestAnimationFrame(draw);
+  const W = cv.width, H = cv.height;
+  const th = THEMES[$('theme').value];
+  const t = (now - startTime) / 1000;
+
+  // 背景：ゆっくり呼吸するグラデーション
+  const breathe = 0.5 + 0.5 * Math.sin(t * 2 * Math.PI / 12); // 12秒周期
+  const g = ctx2d.createRadialGradient(W/2, H/2, 80 + breathe*60, W/2, H/2, H*0.9);
+  g.addColorStop(0, th.c2);
+  g.addColorStop(1, th.c1);
+  ctx2d.fillStyle = g;
+  ctx2d.fillRect(0,0,W,H);
+
+  // 呼吸オーブ（うねり周波数と同期・低コントラストで安全に）
+  if($('showOrb').checked){
+    const f = parseFloat($('beatFreq').value);
+    const amp = f <= 3 ? 0.15 : 0.05;           // 高周波では振幅を抑制（光刺激対策）
+    const pulse = running ? Math.sin(t * 2 * Math.PI * f) * amp : 0;
+    const r = 90 + breathe * 50;
+    const og = ctx2d.createRadialGradient(W/2, H/2, 0, W/2, H/2, r*2.2);
+    og.addColorStop(0, th.orb + Math.round((0.30 + pulse) * 255).toString(16).padStart(2,'0'));
+    og.addColorStop(0.5, th.orb + '14');
+    og.addColorStop(1, th.orb + '00');
+    ctx2d.fillStyle = og;
+    ctx2d.beginPath();
+    ctx2d.arc(W/2, H/2, r*2.2, 0, Math.PI*2);
+    ctx2d.fill();
+  }
+
+  // サブリミナルフラッシュ
+  if(running){
+    const items = getFlashItems();
+    if(items.length && now >= nextFlashAt){
+      currentFlash = items[flashIndex % items.length];
+      flashIndex++;
+      flashUntil = now + parseInt($('flashDur').value);
+      nextFlashAt = now + Math.max(3, parseFloat($('flashInterval').value)) * 1000;
+    }
+    if(currentFlash && now < flashUntil){
+      ctx2d.save();
+      ctx2d.globalAlpha = parseFloat($('flashOpacity').value);
+      if(currentFlash.type === 'img'){
+        const img = currentFlash.img;
+        const scale = Math.min(W*0.6/img.width, H*0.6/img.height);
+        const w = img.width*scale, h = img.height*scale;
+        ctx2d.drawImage(img, (W-w)/2, (H-h)/2, w, h);
+      }else{
+        ctx2d.fillStyle = '#ffffff';
+        ctx2d.font = '600 64px "Segoe UI","Hiragino Sans",sans-serif';
+        ctx2d.textAlign = 'center';
+        ctx2d.textBaseline = 'middle';
+        ctx2d.shadowColor = '#000'; ctx2d.shadowBlur = 12;
+        ctx2d.fillText(currentFlash.text, W/2, H/2);
+      }
+      ctx2d.restore();
+    }
+  }
+
+  // 録画インジケータ更新
+  if(recording){
+    const elapsed = now - recStartTime;
+    const el = fmtTime(elapsed);
+    if(recDurationMs > 0){
+      $('recProgress').value = Math.min(100, elapsed / recDurationMs * 100);
+      $('status').innerHTML = '<b style="color:#e74c3c">● 録画中</b> ' + el + ' / ' + fmtTime(recDurationMs);
+      if(elapsed >= recDurationMs) stopRecording();
+    }else{
+      $('status').innerHTML = '<b style="color:#e74c3c">● 録画中</b> ' + el;
+    }
+  }
+}
+function fmtTime(ms){
+  const s = Math.floor(ms/1000);
+  return String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+}
+
+/* ========= 再生／録画制御 ========= */
+function startSession(){
+  startTime = performance.now();
+  nextFlashAt = startTime + Math.max(3, parseFloat($('flashInterval').value)) * 1000;
+  flashIndex = 0; currentFlash = null;
+  startAudio();
+  running = true;
+}
+function stopSession(){
+  running = false;
+  currentFlash = null;
+  stopAudio();
+}
+
+$('btnPlay').addEventListener('click', ()=>{
+  if(recording) return;
+  if(!running){
+    startSession();
+    $('btnPlay').textContent = '⏸ プレビュー停止';
+    $('status').textContent = 'プレビュー再生中（🎧ヘッドホン推奨）';
+  }else{
+    stopSession();
+    $('btnPlay').textContent = '▶ プレビュー開始';
+    $('status').textContent = '停止中';
+  }
+});
+
+$('btnRec').addEventListener('click', ()=>{
+  if(recording){ stopRecording(); return; }
+  if(running){ stopSession(); $('btnPlay').textContent = '▶ プレビュー開始'; }
+  $('subCheck').checked = false;   // 録画時は確認用大音量を強制OFF
+  startSession();
+
+  const vStream = cv.captureStream(30);
+  const aTrack = streamDest.stream.getAudioTracks()[0];
+  const mixed = new MediaStream([...vStream.getVideoTracks(), aTrack]);
+  const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+    ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+  chunks = [];
+  recorder = new MediaRecorder(mixed, {mimeType:mime, videoBitsPerSecond: 4_000_000});
+  recorder.ondataavailable = e => { if(e.data.size) chunks.push(e.data); };
+  recorder.onstop = saveVideo;
+  recorder.start(1000);
+
+  recording = true;
+  recStartTime = performance.now();
+  recDurationMs = parseInt($('duration').value) * 60 * 1000;
+  $('btnRec').textContent = '■ 録画停止';
+  $('btnRec').classList.add('recording');
+  $('btnPlay').disabled = true;
+  $('recProgress').style.display = recDurationMs > 0 ? 'block' : 'none';
+  $('recProgress').value = 0;
+});
+
+function stopRecording(){
+  if(!recording) return;
+  recording = false;
+  recorder.stop();
+  stopSession();
+  $('btnRec').textContent = '● 録画開始';
+  $('btnRec').classList.remove('recording');
+  $('btnPlay').disabled = false;
+  $('btnPlay').textContent = '▶ プレビュー開始';
+  $('recProgress').style.display = 'none';
+  $('status').textContent = '動画を保存しています…';
+}
+function saveVideo(){
+  const blob = new Blob(chunks, {type:'video/webm'});
+  const f = parseFloat($('beatFreq').value);
+  const band = bandOf(f).key;
+  const stamp = new Date().toISOString().slice(0,16).replace(/[-:T]/g,'');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `binaural_${band}_${f}Hz_${stamp}.webm`;
+  a.click();
+  $('status').innerHTML = '✅ 保存完了：<b>' + a.download + '</b>（' + (blob.size/1024/1024).toFixed(1) + ' MB）';
+}
+
+/* ========= 起動 ========= */
+updateUI();
+startTime = performance.now();
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
