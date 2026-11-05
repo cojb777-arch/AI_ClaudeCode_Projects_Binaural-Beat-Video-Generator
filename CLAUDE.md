@@ -5,7 +5,7 @@
 ## 1. プロジェクト概要
 
 バイノーラルビート（うねり 1〜30Hz）・サブリミナル音声・サブリミナルフラッシュ（画像／テキスト）を組み合わせた動画を、ブラウザ内で生成して WebM として保存するアプリ。個人利用が前提。
-公開範囲: GitHub リポジトリ公開、Cloudflare Workers で静的配信予定。
+公開範囲: GitHub リポジトリ公開、Cloudflare Workers（Git 連携）と GitHub Pages で静的配信。
 
 ## 2. 技術スタックと構成
 
@@ -17,7 +17,8 @@
 
 - ローカル確認: `python -m http.server 8330 --directory public`（または `public/index.html` を直接開く）
 - デプロイ検証（認証不要）: `npx wrangler@4 deploy --dry-run`
-- デプロイ: `npx wrangler login`（初回のみ・ブラウザ認可）→ `npx wrangler deploy`
+- デプロイ: Cloudflare の Git 連携（Workers Builds）により、**`main` への push で自動デプロイされる**（デプロイコマンドは `npx wrangler deploy`、ビルドコマンドは空）。手動デプロイは `npx wrangler login` → `npx wrangler deploy`。
+- **Cloudflare 側のプロジェクト名は `wrangler.jsonc` の `name`（`binaural-beat-video-maker`）と必ず一致させる**。不一致だとビルドが失敗する。名前を変える場合は両方を同時に変更する。
 
 ## 4. このプロジェクト特有の制約
 
@@ -35,10 +36,10 @@
 ## 6. やってはいけないこと
 
 - `public/` に `.env`・キー・個人情報・ローカル絶対パスを置かない。
-- 指示なしに push・デプロイをしない。
+- 指示なしに push・デプロイをしない（`main` への push は本番に自動反映される）。
 - 安全制限（上記 §4）を黙って緩めない。
 
 ## 7. 未解決事項 / 既知の課題
 
 - 実時間より速いオフライン生成、MP4 変換（ffmpeg）、アイソクロニックトーン対応は未実装。
-- Cloudflare への初回デプロイは未実施（`wrangler login` が必要）。
+- GitHub Pages（`.github/workflows/jekyll-gh-pages.yml`、ビルド元 `./public`）と Cloudflare Workers の二重公開になっている。一本化するかは未決定。
