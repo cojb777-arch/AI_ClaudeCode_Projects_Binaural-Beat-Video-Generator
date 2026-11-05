@@ -1,0 +1,8 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "binaural-beat-video-maker",
+  "compatibility_date": "2026-11-06",
+  "assets": {
+    "directory": "./public"
+  }
+}
